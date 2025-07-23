@@ -3,58 +3,98 @@
 <head>
   <title>QR Code Scanner</title>
   <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    #reader {
+      width: 100%;
+      max-width: 300px;
+      margin: 10px auto;
+      border: 2px solid #ddd;
+      border-radius: 8px;
+    }
+    #result {
+      margin-top: 20px;
+      padding: 10px;
+      border-radius: 4px;
+    }
+    .success {
+      color: #155724;
+      background-color: #d4edda;
+      border: 1px solid #c3e6cb;
+    }
+    .error {
+      color: #721c24;
+      background-color: #f8d7da;
+      border: 1px solid #f5c6cb;
+    }
+  </style>
 </head>
 <body>
   <h2>📷 Scan QR Code (Camera)</h2>
-  <div id="reader" style="width: 300px;"></div>
+  <div id="reader"></div>
 
   <h2>🖼️ Upload QR Code Image</h2>
   <input type="file" accept="image/*" id="qr-input-file" />
 
-  <p id="result" style="font-weight:bold;"></p>
+  <p id="result"></p>
 
   <script>
-    // ✅ Replace this with your actual Google Apps Script Web App URL
-    const scriptURL = "https://script.google.com/macros/s/AKfycbyZAoDwggHB86zy-AsPpB4VcfNvFLeoIpQuLimxh-dLlhNGZPIWeWeexbZN93HCS-kN/exec";
+    // Replace this with your actual Google Apps Script Web App URL
+    const scriptURL = "https://script.google.com/macros/s/AKfycbyzrplLNH9HDdieg8Ekw2nsUy7QXvdQCYXExqBTy5sjpSIUxesuVI7hHShsb0h_k2fj/exec";
 
-    // ✅ Send scanned QR to Google Sheet
+    // Send scanned QR to Google Sheet
     async function postToSheet(qrText) {
+      const resultElement = document.getElementById("result");
       try {
         const response = await fetch(scriptURL, {
           method: "POST",
           headers: {
             "Content-Type": "application/json"
           },
-          body: JSON.stringify({ qrCode: qrText }) // ✅ Must match with Apps Script
+          body: JSON.stringify({ qrCode: qrText }) // Must match with Apps Script
         });
 
         const text = await response.text();
-        document.getElementById("result").innerText = "✅ Sent to Google Sheet: " + qrText;
+        resultElement.innerText = "✅ Sent to Google Sheet: " + qrText;
+        resultElement.className = "success";
         console.log("Sheet Response:", text);
       } catch (error) {
         console.error("❌ Error posting to sheet:", error);
-        document.getElementById("result").innerText = "❌ Error sending to Google Sheet.";
+        resultElement.innerText = "❌ Error sending to Google Sheet: " + error.message;
+        resultElement.className = "error";
       }
     }
 
-    // ✅ Called on successful camera scan
+    // Called on successful camera scan
     function onScanSuccess(decodedText, decodedResult) {
       console.log(`Camera Scanned: ${decodedText}`);
       postToSheet(decodedText);
       html5QrcodeScanner.clear(); // Stop scanning after success
     }
 
-    // ✅ Initialize camera scanner
+    // Initialize camera scanner
     const html5QrcodeScanner = new Html5QrcodeScanner(
-      "reader", { fps: 10, qrbox: 250 });
+      "reader", 
+      { 
+        fps: 10, 
+        qrbox: 250,
+        supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA]
+      }
+    );
     html5QrcodeScanner.render(onScanSuccess);
 
-    // ✅ Upload and scan QR from image
+    // Upload and scan QR from image
     const fileInput = document.getElementById('qr-input-file');
     fileInput.addEventListener('change', async () => {
       const file = fileInput.files[0];
       if (!file) return;
 
+      const resultElement = document.getElementById("result");
       const qrCode = new Html5Qrcode("reader");
       try {
         const result = await qrCode.scanFile(file, true);
@@ -62,7 +102,8 @@
         postToSheet(result);
       } catch (err) {
         console.error("Image scan error:", err);
-        document.getElementById("result").innerText = "❌ Failed to scan QR from image.";
+        resultElement.innerText = "❌ Failed to scan QR from image: " + err.message;
+        resultElement.className = "error";
       }
     });
   </script>
