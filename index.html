@@ -1,111 +1,106 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>QR Code Scanner</title>
-  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      max-width: 600px;
-      margin: 0 auto;
-      padding: 20px;
-    }
-    #reader {
+    video, canvas {
       width: 100%;
-      max-width: 300px;
+      max-width: 400px;
       margin: 10px auto;
-      border: 2px solid #ddd;
-      border-radius: 8px;
+      display: block;
     }
     #result {
-      margin-top: 20px;
-      padding: 10px;
-      border-radius: 4px;
-    }
-    .success {
-      color: #155724;
-      background-color: #d4edda;
-      border: 1px solid #c3e6cb;
-    }
-    .error {
-      color: #721c24;
-      background-color: #f8d7da;
-      border: 1px solid #f5c6cb;
+      text-align: center;
+      margin-top: 10px;
+      font-size: 18px;
     }
   </style>
 </head>
 <body>
-  <h2>📷 Scan QR Code (Camera)</h2>
-  <div id="reader"></div>
+  <h2 style="text-align:center;">📷 QR Code Scanner</h2>
+  <video id="video" autoplay></video>
+  <canvas id="canvas" hidden></canvas>
 
-  <h2>🖼️ Upload QR Code Image</h2>
-  <input type="file" accept="image/*" id="qr-input-file" />
+  <input type="file" accept="image/*" id="qrFile" />
+  <div id="result">Result will appear here</div>
 
-  <p id="result"></p>
-
+  <script src="https://cdn.jsdelivr.net/npm/jsqr/dist/jsQR.js"></script>
   <script>
-    // Replace this with your actual Google Apps Script Web App URL
-    const scriptURL = "https://script.google.com/macros/s/AKfycbyzrplLNH9HDdieg8Ekw2nsUy7QXvdQCYXExqBTy5sjpSIUxesuVI7hHShsb0h_k2fj/exec";
+    const video = document.getElementById("video");
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+    const resultDiv = document.getElementById("result");
+    const qrFileInput = document.getElementById("qrFile");
 
-    // Send scanned QR to Google Sheet
-    async function postToSheet(qrText) {
-      const resultElement = document.getElementById("result");
-      try {
-        const response = await fetch(scriptURL, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({ qrCode: qrText }) // Must match with Apps Script
-        });
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwu23idoCXQFWmt6JRL45QjTtOD675r8m6yjgglwSBGqVb0fvAcLm7fbp6FfgpdC5xc/exec"; // 🔁 Replace this
 
-        const text = await response.text();
-        resultElement.innerText = "✅ Sent to Google Sheet: " + qrText;
-        resultElement.className = "success";
-        console.log("Sheet Response:", text);
-      } catch (error) {
-        console.error("❌ Error posting to sheet:", error);
-        resultElement.innerText = "❌ Error sending to Google Sheet: " + error.message;
-        resultElement.className = "error";
+    // Start webcam
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+      .then(stream => {
+        video.srcObject = stream;
+        video.setAttribute("playsinline", true); // Required to tell iOS safari we don't want fullscreen
+        requestAnimationFrame(scan);
+      });
+
+    function scan() {
+      if (video.readyState === video.HAVE_ENOUGH_DATA) {
+        canvas.height = video.videoHeight;
+        canvas.width = video.videoWidth;
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const code = jsQR(imageData.data, imageData.width, imageData.height);
+        if (code) {
+          resultDiv.textContent = `✅ Scanned: ${code.data}`;
+          postToSheet(code.data);
+          return; // stop scanning
+        }
       }
+      requestAnimationFrame(scan);
     }
 
-    // Called on successful camera scan
-    function onScanSuccess(decodedText, decodedResult) {
-      console.log(`Camera Scanned: ${decodedText}`);
-      postToSheet(decodedText);
-      html5QrcodeScanner.clear(); // Stop scanning after success
-    }
-
-    // Initialize camera scanner
-    const html5QrcodeScanner = new Html5QrcodeScanner(
-      "reader", 
-      { 
-        fps: 10, 
-        qrbox: 250,
-        supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA]
-      }
-    );
-    html5QrcodeScanner.render(onScanSuccess);
-
-    // Upload and scan QR from image
-    const fileInput = document.getElementById('qr-input-file');
-    fileInput.addEventListener('change', async () => {
-      const file = fileInput.files[0];
+    // Upload QR from local file
+    qrFileInput.addEventListener("change", async (event) => {
+      const file = event.target.files[0];
       if (!file) return;
 
-      const resultElement = document.getElementById("result");
-      const qrCode = new Html5Qrcode("reader");
-      try {
-        const result = await qrCode.scanFile(file, true);
-        console.log("Image Scanned:", result);
-        postToSheet(result);
-      } catch (err) {
-        console.error("Image scan error:", err);
-        resultElement.innerText = "❌ Failed to scan QR from image: " + err.message;
-        resultElement.className = "error";
-      }
+      const img = new Image();
+      img.onload = () => {
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx.drawImage(img, 0, 0);
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const code = jsQR(imageData.data, imageData.width, imageData.height);
+        if (code) {
+          resultDiv.textContent = `✅ Scanned from file: ${code.data}`;
+          postToSheet(code.data);
+        } else {
+          resultDiv.textContent = "❌ No QR code found in image.";
+        }
+      };
+      img.src = URL.createObjectURL(file);
     });
+
+    // Send data to Google Sheet
+    async function postToSheet(scannedText) {
+      try {
+        const response = await fetch(SCRIPT_URL, {
+          method: "POST",
+          mode: "cors",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ scannedText })
+        });
+
+        const result = await response.json();
+        console.log("✅ Posted to Sheet:", result);
+      } catch (err) {
+        console.error("❌ Error posting to sheet:", err);
+        resultDiv.textContent += "\n⚠️ Could not post to sheet.";
+      }
+    }
   </script>
 </body>
 </html>
