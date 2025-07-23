@@ -14,10 +14,10 @@
   <p id="result" style="font-weight:bold;"></p>
 
   <script>
-    // Your Google Apps Script Web App URL
-    const scriptURL = "https://script.google.com/macros/s/AKfycbx3Qsh3VXzfm-JyXr0nsooX3QFUSiXFUhiaNKqU7I8VCOedXtwcCdQLCHr6OpEB-6uE/exec";
+    // ✅ Replace this with your actual Google Apps Script Web App URL
+    const scriptURL = "https://script.google.com/macros/s/AKfycbzjke47Ngkr0rCbWzBq6F6bgAbm2uuWIJd4ERxnZHVl5khebYyj1Q_OLDQJ2hCnZPf5/exec";
 
-    // Function to post scanned QR text to Google Sheet
+    // ✅ Send scanned QR to Google Sheet
     async function postToSheet(qrText) {
       try {
         const response = await fetch(scriptURL, {
@@ -25,7 +25,7 @@
           headers: {
             "Content-Type": "application/json"
           },
-          body: JSON.stringify({ scannedText: qrText })
+          body: JSON.stringify({ qrCode: qrText }) // ✅ Must match with Apps Script
         });
 
         const text = await response.text();
@@ -37,19 +37,19 @@
       }
     }
 
-    // Function when QR is scanned via camera
+    // ✅ Called on successful camera scan
     function onScanSuccess(decodedText, decodedResult) {
       console.log(`Camera Scanned: ${decodedText}`);
       postToSheet(decodedText);
       html5QrcodeScanner.clear(); // Stop scanning after success
     }
 
-    // Initialize camera scanner
+    // ✅ Initialize camera scanner
     const html5QrcodeScanner = new Html5QrcodeScanner(
       "reader", { fps: 10, qrbox: 250 });
     html5QrcodeScanner.render(onScanSuccess);
 
-    // QR from uploaded file
+    // ✅ Upload and scan QR from image
     const fileInput = document.getElementById('qr-input-file');
     fileInput.addEventListener('change', async () => {
       const file = fileInput.files[0];
