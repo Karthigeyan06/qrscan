@@ -28,32 +28,38 @@
 
   <script>
     function postToSheet(qrData) {
-      const webhookURL ="https://script.google.com/macros/s/AKfycbx3Qsh3VXzfm-JyXr0nsooX3QFUSiXFUhiaNKqU7I8VCOedXtwcCdQLCHr6OpEB-6uE/exec";
+      const webhookURL = "https://script.google.com/macros/s/AKfycbx3Qsh3VXzfm-JyXr0nsooX3QFUSiXFUhiaNKqU7I8VCOedXtwcCdQLCHr6OpEB-6uE/exec";
+
+      // Form-safe format to avoid CORS issues
+      const formData = new URLSearchParams();
+      formData.append("qr_text", qrData);
 
       fetch(webhookURL, {
         method: "POST",
-        body: JSON.stringify({ qr_text: qrData }),
+        body: formData,
         headers: {
-          "Content-Type": "application/json"
+          "Content-Type": "application/x-www-form-urlencoded"
         }
       })
       .then(res => res.text())
       .then(response => {
         console.log("Posted to Google Sheets:", response);
+        alert("✅ QR posted to Google Sheet!");
       })
       .catch(err => {
         console.error("Error posting to Sheets:", err);
+        alert("❌ Failed to post to sheet.");
       });
     }
 
     function onScanSuccess(decodedText, decodedResult) {
       document.getElementById('result').innerText = `Scanned: ${decodedText}`;
       postToSheet(decodedText);
-      html5QrcodeScanner.clear(); // Optional: Stop scanning after one scan
+      html5QrcodeScanner.clear(); // Stop after one scan
     }
 
     function onScanFailure(error) {
-      // Do nothing for failed scans (can log if needed)
+      // No action needed for failed scan
     }
 
     const html5QrcodeScanner = new Html5QrcodeScanner(
