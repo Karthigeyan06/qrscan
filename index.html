@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>QR Code Scanner with Google Sheets</title>
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin-top: 50px;
+    }
+    #reader {
+      width: 300px;
+      margin: auto;
+    }
+    #result {
+      margin-top: 20px;
+      font-size: 18px;
+      font-weight: bold;
+      color: green;
+    }
+  </style>
+</head>
+<body>
+  <h1>QR Code Scanner</h1>
+  <div id="reader"></div>
+  <div id="result">Scan a QR code...</div>
+
+  <script>
+    function postToSheet(qrData) {
+      const webhookURL ="https://script.google.com/macros/s/AKfycbx3Qsh3VXzfm-JyXr0nsooX3QFUSiXFUhiaNKqU7I8VCOedXtwcCdQLCHr6OpEB-6uE/exec";
+
+      fetch(webhookURL, {
+        method: "POST",
+        body: JSON.stringify({ qr_text: qrData }),
+        headers: {
+          "Content-Type": "application/json"
+        }
+      })
+      .then(res => res.text())
+      .then(response => {
+        console.log("Posted to Google Sheets:", response);
+      })
+      .catch(err => {
+        console.error("Error posting to Sheets:", err);
+      });
+    }
+
+    function onScanSuccess(decodedText, decodedResult) {
+      document.getElementById('result').innerText = `Scanned: ${decodedText}`;
+      postToSheet(decodedText);
+      html5QrcodeScanner.clear(); // Optional: Stop scanning after one scan
+    }
+
+    function onScanFailure(error) {
+      // Do nothing for failed scans (can log if needed)
+    }
+
+    const html5QrcodeScanner = new Html5QrcodeScanner(
+      "reader", { fps: 10, qrbox: 250 });
+    html5QrcodeScanner.render(onScanSuccess, onScanFailure);
+  </script>
+</body>
+</html>
