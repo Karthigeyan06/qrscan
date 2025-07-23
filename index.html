@@ -1,70 +1,52 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>QR Code Scanner with Google Sheets</title>
+  <title>QR Code Scanner</title>
   <script src="https://unpkg.com/html5-qrcode"></script>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      text-align: center;
-      margin-top: 50px;
-    }
-    #reader {
-      width: 300px;
-      margin: auto;
-    }
-    #result {
-      margin-top: 20px;
-      font-size: 18px;
-      font-weight: bold;
-      color: green;
-    }
-  </style>
 </head>
 <body>
-  <h1>QR Code Scanner</h1>
-  <div id="reader"></div>
-  <div id="result">Scan a QR code...</div>
+  <h1>Scan QR Code</h1>
+  <div id="reader" style="width: 300px;"></div>
+  <p id="result"></p>
 
   <script>
+    const sheetUrl = "https://script.google.com/macros/s/AKfycbx3Qsh3VXzfm-JyXr0nsooX3QFUSiXFUhiaNKqU7I8VCOedXtwcCdQLCHr6OpEB-6uE/exec"; // paste new Apps Script Web App URL here
+
     function postToSheet(qrData) {
-      const webhookURL = "https://script.google.com/macros/s/AKfycbx3Qsh3VXzfm-JyXr0nsooX3QFUSiXFUhiaNKqU7I8VCOedXtwcCdQLCHr6OpEB-6uE/exec";
-
-      // Form-safe format to avoid CORS issues
-      const formData = new URLSearchParams();
-      formData.append("qr_text", qrData);
-
-      fetch(webhookURL, {
+      fetch(sheetUrl, {
         method: "POST",
-        body: formData,
         headers: {
-          "Content-Type": "application/x-www-form-urlencoded"
-        }
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ qrData: qrData })
       })
-      .then(res => res.text())
-      .then(response => {
-        console.log("Posted to Google Sheets:", response);
-        alert("✅ QR posted to Google Sheet!");
+      .then(response => response.json())
+      .then(data => {
+        console.log("Posted to sheet:", data);
+        document.getElementById("result").innerText = "Posted: " + qrData;
       })
-      .catch(err => {
-        console.error("Error posting to Sheets:", err);
-        alert("❌ Failed to post to sheet.");
+      .catch(error => {
+        console.error("Error posting to Sheets:", error);
+        document.getElementById("result").innerText = "Error: " + error;
       });
     }
 
     function onScanSuccess(decodedText, decodedResult) {
-      document.getElementById('result').innerText = `Scanned: ${decodedText}`;
+      console.log(`QR matched = ${decodedText}`);
       postToSheet(decodedText);
-      html5QrcodeScanner.clear(); // Stop after one scan
     }
 
-    function onScanFailure(error) {
-      // No action needed for failed scan
-    }
-
-    const html5QrcodeScanner = new Html5QrcodeScanner(
-      "reader", { fps: 10, qrbox: 250 });
-    html5QrcodeScanner.render(onScanSuccess, onScanFailure);
+    const html5QrCode = new Html5Qrcode("reader");
+    html5QrCode.start(
+      { facingMode: "environment" },
+      {
+        fps: 10,
+        qrbox: { width: 250, height: 250 }
+      },
+      onScanSuccess
+    ).catch(err => {
+      console.error("Error starting QR scanner", err);
+    });
   </script>
 </body>
 </html>
