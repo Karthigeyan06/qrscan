@@ -1,48 +1,50 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>QR Image Upload to Google Sheets</title>
-  <script src="https://unpkg.com/html5-qrcode@2.3.7/minified/html5-qrcode.min.js"></script>
+  <title>QR Code Scanner and Google Sheet Poster</title>
+  <script src="https://unpkg.com/html5-qrcode"></script>
 </head>
 <body>
-  <h2>Select QR Code Image</h2>
+  <h2>Scan QR from Local Image</h2>
+  <input type="file" accept="image/*" id="file-input" />
+  <p id="result">Waiting for scan...</p>
 
-  <input type="file" accept="image/*" id="qr-file" />
-  <p id="result">Waiting for image...</p>
+  <!-- Hidden div required by Html5Qrcode -->
+  <div id="reader" style="display: none;"></div>
 
   <script>
-    const scriptURL = "https://script.google.com/macros/s/AKfycbxAYhGzV-2V_S-KSAMM8isrYscsIhTRY3D6dQUgcGekA6iJMNbXy7NfGPGnNacFjHmQ/exec"; // 🔁 Replace with your Google Apps Script URL
+    const input = document.getElementById("file-input");
+    const result = document.getElementById("result");
 
-    document.getElementById("qr-file").addEventListener("change", function(event) {
-      const file = event.target.files[0];
+    input.addEventListener("change", async () => {
+      const file = input.files[0];
       if (!file) return;
 
-      const reader = new FileReader();
-      reader.onload = function() {
-        const imgDataUrl = reader.result;
+      const qrCodeScanner = new Html5Qrcode("reader");
+      try {
+        const decoded = await qrCodeScanner.scanFile(file, true);
+        result.innerText = "✅ Scanned: " + decoded;
 
-        const qrScanner = new Html5Qrcode("reader-dummy"); // Dummy element
-        qrScanner.scanFile(file, true)
-          .then(decodedText => {
-            document.getElementById("result").innerText = "✅ QR: " + decodedText;
-            // POST to Google Sheets
-            fetch(scriptURL, {
-              method: 'POST',
-              body: JSON.stringify({ qr: decodedText }),
-              headers: { 'Content-Type': 'application/json' }
-            })
-            .then(() => document.getElementById("result").innerText += " → Sent to Sheet")
-            .catch(err => document.getElementById("result").innerText += " ❌ POST Error");
+        // ✅ Now send to Google Sheets
+        const url = "https://script.google.com/macros/s/AKfycbyCKPkYP9U9lZf9N6kUff-jQRWSySz_w7164Tm3UR6FUApUFFpXJsk9-K9hZUyAenJcfA/exec";
+
+        fetch(url, {
+          method: "POST",
+          mode: "no-cors",  // Prevents CORS error, though you won't get success confirmation
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            data: decoded
           })
-          .catch(err => {
-            document.getElementById("result").innerText = "❌ QR Code not detected in image.";
-          });
-      };
-      reader.readAsDataURL(file);
+        });
+
+        result.innerText += "\n📤 Posted to Google Sheets.";
+
+      } catch (err) {
+        result.innerText = "❌ Error scanning: " + err;
+      }
     });
   </script>
-
-  <!-- Dummy div (needed by html5-qrcode lib, even if hidden) -->
-  <div id="reader-dummy" style="display:none;"></div>
 </body>
 </html>
