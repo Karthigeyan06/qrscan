@@ -1,54 +1,68 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>QR Code Scanner</title>
-  <script src="https://unpkg.com/html5-qrcode@2.3.8/minified/html5-qrcode.min.js"></script>
+  <title>QR Code Scanner (Camera + File)</title>
+  <!-- Load html5-qrcode -->
+  <script src="https://unpkg.com/html5-qrcode"></script>
 </head>
 <body>
   <h1>QR Code Scanner</h1>
-  <div id="reader" style="width:300px;"></div>
+
+  <!-- Camera Scanner -->
+  <div id="reader" style="width: 300px;"></div>
+  
+  <!-- File Scanner -->
+  <h3>Or Upload a QR Code Image</h3>
+  <input type="file" accept="image/*" id="file-input">
+  
+  <!-- Output -->
   <p id="output"></p>
 
   <script>
-    const sheetURL ="https://script.google.com/macros/s/AKfycbx6RlkQ8khH3L8A3M_E9Y5ghMbRvxMZNRigh-9tZMcuN8PltWYovt5Fb1xNCWJcDNkT/exec";
+    const sheetURL = "https://script.google.com/macros/s/AKfycbycNPOTqSe_Liut9WB3Ux0X5eesoh1YZpU0BQzdiqE6vIbVMLY7ofImBQlwgzFYNQFG/exec";
 
-    function onScanSuccess(qrMessage) {
-      document.getElementById("output").innerText = `Scanned: ${qrMessage}`;
-      sendToSheet(qrMessage);
-    }
-
-    function sendToSheet(scannedText) {
+    function postToSheet(qrText) {
       fetch(sheetURL, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ scannedText: scannedText })
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ scannedText: qrText })
       })
-      .then((res) => res.json())
-      .then((data) => {
-        console.log("✅ Posted to sheet:", data);
-      })
-      .catch((err) => {
-        console.error("❌ Error posting to sheet:", err);
-      });
+      .then(res => res.json())
+      .then(data => console.log("✅ Posted to sheet:", data))
+      .catch(err => console.error("❌ Error posting to sheet:", err));
+    }
+
+    function onScanSuccess(qrText) {
+      document.getElementById("output").innerText = `Scanned: ${qrText}`;
+      postToSheet(qrText);
     }
 
     const html5QrCode = new Html5Qrcode("reader");
 
-    Html5Qrcode.getCameras().then((devices) => {
+    // Start camera scan
+    Html5Qrcode.getCameras().then(devices => {
       if (devices && devices.length) {
         html5QrCode.start(
-          { facingMode: "environment" }, // back camera
-          {
-            fps: 10,
-            qrbox: 250,
-          },
+          { facingMode: "environment" },
+          { fps: 10, qrbox: 250 },
           onScanSuccess
         );
       }
-    }).catch(err => {
-      console.error("Camera error:", err);
+    }).catch(err => console.error("Camera error:", err));
+
+    // Handle image file upload
+    document.getElementById("file-input").addEventListener("change", (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      html5QrCode.scanFile(file, true)
+        .then(qrText => {
+          onScanSuccess(qrText);
+        })
+        .catch(err => {
+          console.error("❌ File scan failed:", err);
+          document.getElementById("output").innerText = "Could not scan QR from file.";
+        });
     });
   </script>
 </body>
