@@ -1,49 +1,51 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>QR Code Scanner and Google Sheet Poster</title>
+  <title>QR Code Scanner</title>
   <script src="https://unpkg.com/html5-qrcode"></script>
 </head>
 <body>
-  <h2>Scan QR from Local Image</h2>
-  <input type="file" accept="image/*" id="file-input" />
-  <p id="result">Waiting for scan...</p>
-
-  <!-- Hidden div required by Html5Qrcode -->
-  <div id="reader" style="display: none;"></div>
+  <h1>Scan QR Code</h1>
+  <div id="reader" style="width:300px;"></div>
+  <div id="result"></div>
 
   <script>
-    const input = document.getElementById("file-input");
-    const result = document.getElementById("result");
+    function postQRDataToSheet(scannedText) {
+      fetch('https://script.google.com/macros/s/AKfycby85jPlMjOksnBpVOpYcECTDWP4t3EkZXTyLCu3VKEZVXI60dCqOY3iS3UWCdSe8F3WDw/exec', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ data: scannedText })
+      })
+      .then(res => res.text())
+      .then(txt => {
+        document.getElementById("result").innerText = "Data posted: " + scannedText;
+        console.log("Posted to sheet:", scannedText);
+      })
+      .catch(err => {
+        console.error("Error posting:", err);
+        document.getElementById("result").innerText = "Error posting QR data.";
+      });
+    }
 
-    input.addEventListener("change", async () => {
-      const file = input.files[0];
-      if (!file) return;
+    const html5QrCode = new Html5Qrcode("reader");
 
-      const qrCodeScanner = new Html5Qrcode("reader");
-      try {
-        const decoded = await qrCodeScanner.scanFile(file, true);
-        result.innerText = "✅ Scanned: " + decoded;
-
-        // ✅ Now send to Google Sheets
-        const url = "https://script.google.com/macros/s/AKfycbx2NZmvyCoHQ08g2ttVXRjcmMIHTDONfHcBQAWROa4XIHcw8e3jCF_cmlCXfYPtxBivRw/exec";
-
-        fetch(url, {
-          method: "POST",
-          mode: "no-cors",  // Prevents CORS error, though you won't get success confirmation
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            data: decoded
-          })
-        });
-
-        result.innerText += "\n📤 Posted to Google Sheets.";
-
-      } catch (err) {
-        result.innerText = "❌ Error scanning: " + err;
+    html5QrCode.start(
+      { facingMode: "environment" },
+      {
+        fps: 10,
+        qrbox: 250
+      },
+      qrCodeMessage => {
+        postQRDataToSheet(qrCodeMessage);
+        html5QrCode.stop(); // Optional: stop scanning after 1st scan
+      },
+      errorMessage => {
+        // ignore scanning errors
       }
+    ).catch(err => {
+      console.error("QR code start error:", err);
     });
   </script>
 </body>
