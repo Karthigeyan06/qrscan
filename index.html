@@ -1,52 +1,32 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>QR Code Scanner</title>
-  <script src="https://unpkg.com/html5-qrcode"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Smart Search Landing</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <h1>Scan QR Code</h1>
-  <div id="reader" style="width:300px;"></div>
-  <div id="result"></div>
+  <div class="container">
+    <h1 class="logo">My Website</h1>
+    <input type="text" id="searchInput" placeholder="Type a page name... (e.g. about)" />
+    <button onclick="searchPage()">Go</button>
+    <p id="errorMsg"></p>
+  </div>
 
   <script>
-    function postQRDataToSheet(scannedText) {
-      fetch('https://script.google.com/macros/s/AKfycby85jPlMjOksnBpVOpYcECTDWP4t3EkZXTyLCu3VKEZVXI60dCqOY3iS3UWCdSe8F3WDw/exec', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ data: scannedText })
-      })
-      .then(res => res.text())
-      .then(txt => {
-        document.getElementById("result").innerText = "Data posted: " + scannedText;
-        console.log("Posted to sheet:", scannedText);
-      })
-      .catch(err => {
-        console.error("Error posting:", err);
-        document.getElementById("result").innerText = "Error posting QR data.";
-      });
-    }
+    const pages = {
+      "r15":"https://script.google.com/macros/s/AKfycbxGKp7jr1qqXZaumBJZh3ynHwK3ApcOXoTvtdrf1H2QUHt4xrbACY6lGCWGMF0rc4gz/exec"
+    };
 
-    const html5QrCode = new Html5Qrcode("reader");
-
-    html5QrCode.start(
-      { facingMode: "environment" },
-      {
-        fps: 10,
-        qrbox: 250
-      },
-      qrCodeMessage => {
-        postQRDataToSheet(qrCodeMessage);
-        html5QrCode.stop(); // Optional: stop scanning after 1st scan
-      },
-      errorMessage => {
-        // ignore scanning errors
+    function searchPage() {
+      const query = document.getElementById("searchInput").value.toLowerCase().trim();
+      if (pages[query]) {
+        window.location.href = pages[query];
+      } else {
+        document.getElementById("errorMsg").innerText = "Page not found. Try: home, about, services, gallery, contact";
       }
-    ).catch(err => {
-      console.error("QR code start error:", err);
-    });
+    }
   </script>
 </body>
 </html>
